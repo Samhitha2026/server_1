@@ -5,7 +5,7 @@ const CONFIG = {
         : window.location.origin, // On Render, the frontend and backend are on the same URL
         
     SUPABASE_URL: "https://uobwibltjkozkukrizps.supabase.co",
-    SUPABASE_ANON_KEY: "[YOUR-ANON-KEY]"
+    SUPABASE_ANON_KEY: "sb_publishable_16o_ug2cXlKYikikReO4HA_9UG5xwnf"
 };
 
 console.log("CIPHERS: Protocol linked to " + CONFIG.BACKEND_URL);
