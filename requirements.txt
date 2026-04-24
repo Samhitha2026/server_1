@@ -7,4 +7,4 @@ python-multipart==0.0.9
 supabase==2.8.1
 httpx==0.27.2
 jinja2==3.1.4
-dns-python==2.7.0
+dnspython==2.7.0
