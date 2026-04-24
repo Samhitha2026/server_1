@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+transformers
+torch
+supabase
+python-dotenv
+pydantic
+email-validator
+twilio
+jinja2
+python-multipart

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciphers — Secure Entry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #030712; color: #f8fafc; overflow: hidden; }
+        .mesh-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.1) 0px, transparent 50%); z-index: -1; }
+        .glass-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 2.5rem; }
+        .elite-input { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.25rem; color: #fff; outline: none; }
+        .btn-social { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 1.25rem; flex: 1; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
+        .btn-social:hover { background: rgba(255, 255, 255, 0.08); transform: translateY(-3px); }
+        .error-msg { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 1rem; border-radius: 1rem; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: none; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="mesh-bg"></div>
+
+    <div class="glass-card w-full max-w-[500px] p-12 text-center">
+        <div class="mb-10">
+            <h1 class="text-4xl font-black tracking-tighter mb-2">Initialize Connection</h1>
+            <p id="roleLabel" class="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">Accessing Protocol...</p>
+        </div>
+
+        <div id="errorBox" class="error-msg mb-8"></div>
+
+        <div class="space-y-4 mb-10">
+            <button onclick="loginWith('google')" class="btn-social">
+                <img src="https://www.google.com/favicon.ico" class="w-4 h-4"> Google Protocol
+            </button>
+            <button onclick="loginWith('azure')" class="btn-social">
+                <img src="https://www.microsoft.com/favicon.ico" class="w-4 h-4"> Microsoft Cloud
+            </button>
+        </div>
+
+        <div class="flex items-center gap-4 mb-10 opacity-20"><div class="flex-1 h-px bg-white"></div><span class="text-[10px] font-black uppercase">Standard Link</span><div class="flex-1 h-px bg-white"></div></div>
+
+        <form class="space-y-4 text-left" id="authForm">
+            <input type="email" id="email" placeholder="Email Endpoint" class="elite-input w-full p-4" required>
+            <input type="password" id="password" placeholder="Access Key" class="elite-input w-full p-4" required>
+            <button type="submit" id="authBtn" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-sm uppercase tracking-widest mt-4">Establish Secure Link</button>
+        </form>
+
+        <p class="mt-8 text-[10px] font-bold text-slate-600 uppercase tracking-widest cursor-pointer hover:text-white" onclick="location.href='select.html'">Change Access Role</p>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // 1. Diagnostics
+        console.log("CIPHERS: System Initializing...");
+        if (typeof CONFIG === 'undefined') {
+            alert("FATAL ERROR: config.js not found! Ensure it exists in the frontend folder.");
+        }
+
+        // 2. Client Initialization (Fixed variable naming conflict)
+        const _client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        const role = localStorage.getItem('ciphers_selected_role') || 'citizen';
+        document.getElementById('roleLabel').innerText = role + ' Protocol Node';
+
+        function showError(msg) {
+            console.error("CIPHERS ERROR:", msg);
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+            setTimeout(() => { box.style.display = 'none'; }, 6000);
+        }
+
+        // 3. OAuth Flow
+        async function loginWith(provider) {
+            console.log("CIPHERS: Requesting OAuth via " + provider);
+            try {
+                const redirect = window.location.origin + window.location.pathname;
+                console.log("CIPHERS: Redirect URI set to " + redirect);
+                
+                const { error } = await _client.auth.signInWithOAuth({
+                    provider: provider,
+                    options: { redirectTo: redirect }
+                });
+                if (error) throw error;
+            } catch (err) {
+                showError("OAUTH FAILURE: " + err.message);
+            }
+        }
+
+        // 4. Manual Login
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('authBtn');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            btn.innerText = 'ESTABLISHING...';
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await _client.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                
+                console.log("CIPHERS: Login Successful", data);
+                localStorage.setItem('ciphers_session', JSON.stringify(data.session));
+                
+                // Final Redirection
+                window.location.href = role === 'citizen' ? 'citizen.html' : 'authority.html';
+            } catch (err) {
+                showError("DENIED: " + err.message);
+                btn.innerText = 'ESTABLISH SECURE LINK';
+                btn.disabled = false;
+            }
+        });
+
+        // 5. Auto-Redirect if Session Exists
+        window.onload = async () => {
+            const { data: { session } } = await _client.auth.getSession();
+            if (session) {
+                console.log("CIPHERS: Active Session Found for " + session.user.email);
+                window.location.href = role === 'citizen' ? 'citizen.html' : 'authority.html';
+            }
+        };
+    </script>
+</body>
+</html>

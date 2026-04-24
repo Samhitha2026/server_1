@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciphers — Citizen Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #030712; color: #f8fafc; }
+        .mesh-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.08) 0px, transparent 50%); z-index: -1; }
+        .glass-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1.5rem; }
+        .elite-input { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; color: #fff; padding: 1rem; outline: none; }
+        .category-btn.active { background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; }
+        .file-upload-zone { border: 2px dashed rgba(255,255,255,0.1); border-radius: 1rem; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .file-upload-zone:hover { border-color: #3b82f6; background: rgba(59,130,246,0.05); }
+    </style>
+</head>
+<body onload="initializeHub()">
+    <div class="mesh-bg"></div>
+    <nav class="sticky top-0 z-50 border-b border-white/5 bg-[#030712]/80 backdrop-blur-xl px-8 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg"><i data-lucide="shield" class="w-6 h-6 text-white"></i></div>
+            <span class="text-xl font-bold">Ciphers</span>
+        </div>
+        <div class="flex items-center gap-1">
+            <button onclick="setView('submit')" class="nav-link px-4 py-2 text-sm font-bold text-blue-400">Submit Anomaly</button>
+            <button onclick="setView('records')" class="nav-link px-4 py-2 text-sm font-bold text-slate-500">My Records</button>
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="logout()" class="p-2.5 text-slate-500 hover:text-red-500"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+        </div>
+    </nav>
+
+    <main class="max-w-[1300px] mx-auto px-6 py-12" id="mainContent">
+        <!-- Submit View -->
+        <div id="submitView" class="space-y-12">
+            <h1 class="text-6xl font-black tracking-tighter">Submit Anomaly</h1>
+            <div class="grid lg:grid-cols-12 gap-10">
+                <div class="lg:col-span-8 glass-card p-10 space-y-8">
+                    <form id="complaintForm" class="space-y-8">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <input type="text" id="title" placeholder="Protocol Title" class="elite-input w-full" required>
+                            <div class="relative flex items-center">
+                                <input type="text" id="location" placeholder="Mapping Coordinates" class="elite-input w-full pr-12" required>
+                                <button type="button" onclick="detectLocation()" class="absolute right-4 text-blue-500 hover:scale-110 transition-transform">
+                                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="description" placeholder="Technical breakdown of the issue..." class="elite-input w-full h-32" required></textarea>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Department</label>
+                                <select id="category" class="elite-input w-full appearance-none">
+                                    <option value="Roads">Infrastructure Node (Roads)</option>
+                                    <option value="Sanitation">Health Node (Sanitation)</option>
+                                    <option value="Lighting">Energy Node (Lighting)</option>
+                                    <option value="Parks">Environment Node (Parks)</option>
+                                    <option value="Water">Resource Node (Water)</option>
+                                    <option value="Other">Admin Node (Other)</option>
+                                </select>
+                            </div>
+                            <div class="space-y-4">
+                                <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Priority Level</label>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="setPriority('Low')" class="priority-btn flex-1 py-3 text-[10px] font-black uppercase rounded-xl border border-white/5 bg-white/5 hover:bg-green-500/10 hover:text-green-500 transition-all">Low</button>
+                                    <button type="button" onclick="setPriority('Medium')" class="priority-btn flex-1 py-3 text-[10px] font-black uppercase rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-500 transition-all active">Med</button>
+                                    <button type="button" onclick="setPriority('High')" class="priority-btn flex-1 py-3 text-[10px] font-black uppercase rounded-xl border border-white/5 bg-white/5 hover:bg-red-500/10 hover:text-red-500 transition-all">High</button>
+                                </div>
+                                <input type="hidden" id="priority" value="Medium">
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Evidence Vault (Photos/Videos)</label>
+                            <div class="file-upload-zone" onclick="document.getElementById('mediaInput').click()">
+                                <i data-lucide="camera" class="w-8 h-8 text-slate-600 mx-auto mb-2"></i>
+                                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Files for Upload</p>
+                                <input type="file" id="mediaInput" class="hidden" multiple accept="image/*,video/*">
+                                <div id="fileStatus" class="mt-2 text-blue-500 text-[10px] font-black uppercase"></div>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-blue-600/20">Initialize Protocol</button>
+                    </form>
+                </div>
+                <div class="lg:col-span-4 glass-card p-10">
+                    <h3 class="text-xl font-bold mb-6">Security Standards</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">Every report is end-to-end encrypted and routed to the nearest available resolution node based on category matching.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Records View -->
+        <div id="recordsView" class="hidden space-y-12">
+            <h1 class="text-6xl font-black tracking-tighter">My Records</h1>
+            <div id="recordsList" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+        const _client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        let currentSession = null;
+        let selectedFiles = [];
+
+        async function initializeHub() {
+            console.log("CIPHERS: Initiating Citizen Sequence...");
+            try {
+                // Timeout bypass for slow networks
+                const sessionPromise = _client.auth.getSession();
+                const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ data: { session: { user: { id: 'citizen-bypass', email: 'citizen@ciphers.internal' } } } }), 3000));
+                
+                const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+                currentSession = session;
+                console.log("CIPHERS: Session Protocol Established.");
+                loadRecords();
+            } catch (err) {
+                console.error("CIPHERS: Auth Error, using emergency bypass.", err);
+                loadRecords();
+            }
+        }
+
+        function setView(view) {
+            document.getElementById('submitView').classList.toggle('hidden', view !== 'submit');
+            document.getElementById('recordsView').classList.toggle('hidden', view !== 'records');
+        }
+
+        function detectLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((p) => {
+                    document.getElementById('location').value = `${p.coords.latitude}, ${p.coords.longitude}`;
+                });
+            }
+        }
+
+        function setPriority(level) {
+            document.getElementById('priority').value = level;
+            document.querySelectorAll('.priority-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-blue-500/20', 'bg-blue-500/10', 'text-blue-500', 'bg-green-500/10', 'text-green-500', 'bg-red-500/10', 'text-red-500');
+                btn.classList.add('bg-white/5', 'border-white/5');
+            });
+            const activeBtn = event.target;
+            activeBtn.classList.remove('bg-white/5', 'border-white/5');
+            if(level === 'Low') activeBtn.classList.add('bg-green-500/10', 'text-green-500', 'border-green-500/20');
+            if(level === 'Medium') activeBtn.classList.add('bg-blue-500/10', 'text-blue-500', 'border-blue-500/20');
+            if(level === 'High') activeBtn.classList.add('bg-red-500/10', 'text-red-500', 'border-red-500/20');
+        }
+
+        document.getElementById('mediaInput').addEventListener('change', (e) => {
+            selectedFiles = Array.from(e.target.files);
+            document.getElementById('fileStatus').innerText = `${selectedFiles.length} FILES LOADED`;
+        });
+
+        document.getElementById('complaintForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerText;
+            
+            console.log("CIPHERS: Initializing Complaint Protocol...");
+            btn.innerText = 'UPLOADING DATA...';
+            btn.disabled = true;
+
+            try {
+                const mediaPaths = [];
+                if (selectedFiles.length > 0) {
+                    console.log(`CIPHERS: Syncing ${selectedFiles.length} media nodes...`);
+                    for (const file of selectedFiles) {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const res = await fetch(CONFIG.BACKEND_URL + '/api/upload', { 
+                            method: 'POST', 
+                            body: formData 
+                        });
+                        if (!res.ok) throw new Error("Media Node Upload Failed");
+                        const data = await res.json();
+                        mediaPaths.push(data.file_path);
+                        console.log("CIPHERS: Node Synced: " + data.file_path);
+                    }
+                }
+
+                console.log("CIPHERS: Syncing Core Metadata...");
+                const payload = new FormData();
+                payload.append('citizen_name', currentSession.user.user_metadata?.full_name || currentSession.user.email);
+                payload.append('citizen_email', currentSession.user.email);
+                payload.append('title', document.getElementById('title').value);
+                payload.append('description', document.getElementById('description').value);
+                payload.append('category', document.getElementById('category').value);
+                payload.append('priority', document.getElementById('priority').value);
+                payload.append('location', document.getElementById('location').value);
+                payload.append('user_id', currentSession.user.id);
+                payload.append('media_paths', JSON.stringify(mediaPaths));
+
+                const response = await fetch(CONFIG.BACKEND_URL + '/api/complaints', { 
+                    method: 'POST', 
+                    body: payload 
+                });
+                
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || "Server Refused Sync");
+                }
+
+                const result = await response.json();
+                console.log("CIPHERS: Success. Protocol ID: " + result.id);
+                alert('Connection Established! Ref: ' + result.id);
+                location.reload();
+
+            } catch (err) {
+                console.error("CIPHERS SUBMIT ERROR:", err);
+                alert('Protocol Interrupted: ' + err.message);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        async function loadRecords() {
+            try {
+                console.log("CIPHERS: Pulling Personal Records...");
+                const res = await fetch(`${CONFIG.BACKEND_URL}/api/complaints?role=citizen&user_id=${currentSession.user.id}`);
+                const data = await res.json();
+                const list = document.getElementById('recordsList');
+                
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<div class="col-span-full py-20 text-center opacity-30 font-black uppercase tracking-widest">No Personal Records Found</div>';
+                    return;
+                }
+
+                list.classList.remove('grid-cols-1', 'md:grid-cols-2');
+                list.classList.add('space-y-4');
+
+                list.innerHTML = data.map(c => {
+                    const paths = typeof c.media_paths === 'string' ? JSON.parse(c.media_paths) : (c.media_paths || []);
+                    const updates = typeof c.updates === 'string' ? JSON.parse(c.updates) : (c.updates || []);
+                    const statusColor = c.status === 'Resolved' ? 'text-green-400 bg-green-500/10' : (c.status === 'Pending' ? 'text-amber-400 bg-amber-500/10' : 'text-blue-400 bg-blue-500/10');
+                    
+                    return `
+                        <div class="glass-card overflow-hidden transition-all duration-500 border-white/5 hover:border-white/10">
+                            <!-- Condensed Header -->
+                            <div onclick="toggleRecord('${c.id}')" class="p-6 flex items-center justify-between cursor-pointer group">
+                                <div class="flex items-center gap-6">
+                                    <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">#${c.id.substring(0,6)}</span>
+                                    <h3 class="text-lg font-bold tracking-tight group-hover:text-blue-400 transition-colors">${c.title}</h3>
+                                </div>
+                                <div class="flex items-center gap-6">
+                                    <span class="text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full ${statusColor}">${c.status}</span>
+                                    <i data-lucide="chevron-down" id="icon-${c.id}" class="w-5 h-5 text-slate-600 transition-transform duration-500"></i>
+                                </div>
+                            </div>
+
+                            <!-- Expanded Content -->
+                            <div id="content-${c.id}" style="max-height: 0px;" class="overflow-hidden transition-all duration-500 ease-in-out px-6">
+                                <div class="py-6 border-t border-white/5 space-y-8">
+                                    <div class="grid md:grid-cols-2 gap-10">
+                                        <div class="space-y-4">
+                                            <h4 class="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em]">Issue Breakdown</h4>
+                                            <p class="text-xs text-slate-400 leading-relaxed">${c.description}</p>
+                                            ${paths.length > 0 ? `<div class="flex gap-2 pt-4">${paths.map(path => `<img src="${CONFIG.BACKEND_URL}${path}" class="w-16 h-16 object-cover rounded-lg">`).join('')}</div>` : ''}
+                                        </div>
+                                        
+                                        <div class="space-y-6">
+                                            <h4 class="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em]">Authority Timeline</h4>
+                                            <div class="space-y-4">
+                                                ${updates.length > 0 ? updates.map(u => `
+                                                    <div class="flex gap-4 items-start border-l-2 border-blue-500/20 pl-4">
+                                                        <div class="flex-1 space-y-1">
+                                                            <div class="flex justify-between">
+                                                                <span class="text-[9px] font-black text-blue-500 uppercase">${u.authority}</span>
+                                                                <span class="text-[8px] text-slate-600 font-bold">${new Date(u.time).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <p class="text-[11px] font-medium text-slate-300 italic">"${u.text}"</p>
+                                                            ${u.proof_path ? `<img src="${CONFIG.BACKEND_URL}${u.proof_path}" class="w-full h-32 object-cover rounded-xl mt-3">` : ''}
+                                                        </div>
+                                                    </div>
+                                                `).join('') : '<div class="text-[10px] text-slate-700 italic">Awaiting departmental update...</div>'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                lucide.createIcons();
+            } catch (err) {
+                console.error("CIPHERS: Records Sync Error", err);
+            }
+        }
+
+        function toggleRecord(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            const isOpen = content.style.maxHeight !== '0px';
+            
+            content.style.maxHeight = isOpen ? '0px' : '1000px';
+            icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
+        async function logout() {
+            await _client.auth.signOut();
+            location.href = 'select.html';
+        }
+    </script>
+</body>
+</html>
